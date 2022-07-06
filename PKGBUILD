@@ -1,80 +1,82 @@
-# Maintainer: Pavan Rikhi <pavan.rikhi@gmail.com>
-# Maintainer: BrLi <brli at chakralinux dot org>
+# Maintainer: Luke Arms <luke@arms.to>
+# Contributor: Pavan Rikhi <pavan.rikhi@gmail.com>
+# Contributor: BrLi <brli at chakralinux dot org>
 
+_electronver=15
+_nodever=14
 pkgname=pencil
 pkgver=3.1.0
-pkgrel=7
-pkgdesc="Sketching and GUI prototyping/wireframing tool"
-arch=('any')
+epoch=1
+pkgrel=1
+pkgdesc="An open-source GUI prototyping tool"
+arch=('i686' 'x86_64')
 license=('GPL2')
-url="https://github.com/evolus/pencil"
-depends=(electron)
-makedepends=(yarn)
+url="http://pencil.evolus.vn/"
+depends=("electron$_electronver")
+makedepends=('git' 'nvm' 'jq' 'libxcrypt-compat')
+provides=()
+conflicts=()
 source=("https://github.com/evolus/pencil/archive/v$pkgver.tar.gz"
-        'fix-package-json.patch'
-        'upstream.patch')
+    'upstream.patch'
+    'fix-package-json.patch')
 sha256sums=('e14eddd0aad28919cfdf8d47b726f9c75a3a0d2042605e8da96309c23a995f44'
-            '7094d33707a1fa27b79f296b3083584643150935ac4e464ebd44a82ed04ad036'
-            '78c28950a497495f3efef0b915283c10fd834c83996471291ae6ac18e3256997')
-conflicts=('evolus-pencil-bin' 'pencil-v2')
+    '3cca728d06df6bc3f5bcc00d9c6f1f70a28c1375ae12a557dd38e222e926726c'
+    'c10b84d73e8f37344b14669f0291aa0acf948b82ee2786475d66ab55bcdb692b')
+
+_ensure_local_nvm() {
+    if type nvm &>/dev/null; then
+        nvm deactivate
+        nvm unload
+    fi
+    unset npm_config_prefix
+    export NVM_DIR=${srcdir}/.nvm
+    . /usr/share/nvm/init-nvm.sh
+}
 
 prepare() {
     cd "${srcdir}/${pkgname}-${pkgver}"
-    
-    patch -Np1 -i "${srcdir}/upstream.patch"
 
-    # We don't build electron and friends, and don't depends on postinstall script
-    patch -Np1 -i "${srcdir}/fix-package-json.patch"
-    sed '/^\s*\"electron.*$/d;/postinstall/d' -i app/package.json
+    # To generate `upstream.patch`:
+    # - git diff --binary f1309bc..47b2389
+    git apply --verbose --whitespace=nowarn "${srcdir}/upstream.patch"
+
+    # Fix invalid electron-builder settings
+    patch -p1 <"${srcdir}/fix-package-json.patch"
+
+    _ensure_local_nvm
+    # ` || false` is a workaround until this upstream fix is released:
+    # https://github.com/nvm-sh/nvm/pull/2698
+    nvm ls "$_nodever" &>/dev/null ||
+        nvm install "$_nodever" || false
 }
 
 build() {
     cd "${srcdir}/${pkgname}-${pkgver}"
-    yarn install --pure-lockfile \
-                 --no-bin-links \
-                 --cache-folder "${srcdir}/cache" \
-                 --link-folder "${srcdir}/link" \
-                 --ignore-scripts
+    _ensure_local_nvm
+    nvm use "$_nodever"
+    npm install --global yarn
+    yarn install --frozen-lockfile --no-default-rc \
+        --cache-folder "${srcdir}/.yarn" --no-progress
+    # electron-builder only generates /usr/share/* assets for target package
+    # types 'apk', 'deb', 'freebsd', 'p5p', 'pacman', 'rpm' and 'sh', so build a
+    # pacman package and unpack it
+    local _appname _appver _outfile _unpackdir=${srcdir}/${pkgname}-${pkgver}.unpacked
+    _appname=$(jq -r '.name' app/package.json)
+    _appver=$(jq -r '.version' app/package.json)
+    _outfile=dist/${_appname}-${_appver}.pacman
+    rm -rf "${_unpackdir}"
+    mkdir -p "${_unpackdir}"
 
-    cd "${srcdir}/${pkgname}-${pkgver}/app"
-    yarn install --pure-lockfile \
-                 --no-bin-links \
-                 --cache-folder "${srcdir}/cache" \
-                 --link-folder "${srcdir}/link" \
-                 --ignore-scripts
+    local i686=ia32 x86_64=x64
+    # Add -c.asar=false to suppress creation of an app archive
+    ./node_modules/.bin/electron-builder build \
+        --linux pacman \
+        --"${!CARCH}" \
+        -c.electronDist="/usr/lib/electron$_electronver" \
+        -c.electronVersion="$(<"/usr/lib/electron$_electronver/version")"
+    tar -C "${_unpackdir}" -xf "${_outfile}"
 
-
-    # Aggressively remove binary and useless files in node_modules
-    cd "${srcdir}/${pkgname}-${pkgver}/app/node_modules"
-    find . -iname "CHANGELOG*" -exec rm -rfv {} +
-    find . -iname "README*" -exec rm -rfv {} +
-    find . -iname "*.md" -exec rm -rfv {} +
-    find . -iname "*test*" -exec rm -rfv {} +
-    find . -iname "license*" -exec rm -rfv {} +
-    find . -iname ".*" -exec rm -rfv {} + || true
-    find . -name "yarn.lock" -exec rm -rfv {} +
-}
-
-package() {
-    local _destdir=usr/lib/"${pkgname}"
-    install -dm755 "${pkgdir}/${_destdir}"
-
-    install -Dm755 /dev/stdin "${pkgdir}/usr/bin/${pkgname}" <<END
-#!/bin/sh
-exec electron /${_destdir} "\$@"
-END
-
-    cd "${srcdir}/${pkgname}-${pkgver}"
-
-    cp -r --no-preserve=ownership --preserve=mode app/* "${pkgdir}/${_destdir}/"
-
-    # install icons of vary sizes to hi-color theme
-    for px in 16 24 32 48 64 96 128 256; do
-        install -Dm644 "build/icons/${px}x${px}.png" \
-            "${pkgdir}/usr/share/icons/hicolor/${px}x${px}/apps/${pkgname}.png"
-    done
-
-    install -Dm644 /dev/stdin  "$pkgdir/usr/share/applications/pencil.desktop" <<END
+    install -Dm644 /dev/stdin "${_unpackdir}/usr/share/applications/pencil.desktop" <<END
 [Desktop Entry]
 Encoding=UTF-8
 Name=Pencil
@@ -91,18 +93,36 @@ Icon=pencil
 Categories=Graphics;2DGraphics;Development;
 MimeType=application/x-evolus-pencil;
 END
-
-    install -Dm644 /dev/stdin  "${pkgdir}/usr/share/mime/application/pencil.xml" <<END
+    install -Dm644 /dev/stdin "${_unpackdir}/usr/share/mime/packages/pencil.xml" <<END
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
     <mime-type type="application/x-evolus-pencil">
         <comment>Evolus Pencil Document</comment>
-        <icon name="image-x-generic"/>
+        <generic-icon name="image-x-generic"/>
         <glob pattern="*.ep"/>
         <glob pattern="*.epz"/>
         <glob pattern="*.epgz"/>
         <sub-class-of type="text/xml"/>
     </mime-type>
 </mime-info>
+END
+}
+
+package() {
+    local _appname
+    _appname=$(jq -r '.name' "${srcdir}/${pkgname}-${pkgver}/app/package.json")
+    _appdir=opt/${_appname}/resources/app
+    cd "${srcdir}/${pkgname}-${pkgver}.unpacked"
+    mv "usr" "${pkgdir}/"
+    install -d "${pkgdir}/usr/lib"
+    [[ -d $_appdir ]] || {
+        _appdir=${_appdir%/*}
+        _appfile=/app.asar
+    }
+    mv "$_appdir" "${pkgdir}/usr/lib/${pkgname}"
+    install -Dm644 "${srcdir}/${pkgname}-${pkgver}/LICENSE.md" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.md"
+    install -Dm755 /dev/stdin "${pkgdir}/usr/bin/pencil" <<END
+#!/bin/sh
+exec /usr/lib/electron${_electronver}/electron /usr/lib/$pkgname$_appfile "\$@"
 END
 }

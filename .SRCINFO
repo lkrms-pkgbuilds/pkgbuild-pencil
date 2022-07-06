@@ -1,20 +1,22 @@
 pkgbase = pencil
-	pkgdesc = Sketching and GUI prototyping/wireframing tool
+	pkgdesc = An open-source GUI prototyping tool
 	pkgver = 3.1.0
-	pkgrel = 7
-	url = https://github.com/evolus/pencil
-	arch = any
+	pkgrel = 1
+	epoch = 1
+	url = http://pencil.evolus.vn/
+	arch = i686
+	arch = x86_64
 	license = GPL2
-	makedepends = yarn
-	depends = electron
-	conflicts = evolus-pencil-bin
-	conflicts = pencil-v2
+	makedepends = git
+	makedepends = nvm
+	makedepends = jq
+	makedepends = libxcrypt-compat
+	depends = electron15
 	source = https://github.com/evolus/pencil/archive/v3.1.0.tar.gz
-	source = fix-package-json.patch
 	source = upstream.patch
+	source = fix-package-json.patch
 	sha256sums = e14eddd0aad28919cfdf8d47b726f9c75a3a0d2042605e8da96309c23a995f44
-	sha256sums = 7094d33707a1fa27b79f296b3083584643150935ac4e464ebd44a82ed04ad036
-	sha256sums = 78c28950a497495f3efef0b915283c10fd834c83996471291ae6ac18e3256997
+	sha256sums = 3cca728d06df6bc3f5bcc00d9c6f1f70a28c1375ae12a557dd38e222e926726c
+	sha256sums = c10b84d73e8f37344b14669f0291aa0acf948b82ee2786475d66ab55bcdb692b
 
 pkgname = pencil
-

@@ -1,45 +1,38 @@
-From f6b62008495253f0c68ea1a03eb6815e3bd60e97 Mon Sep 17 00:00:00 2001
-From: BrLi <brli@chakralinux.org>
-Date: Mon, 7 Dec 2020 15:58:13 +0800
-Subject: [PATCH] fix package.json
-
----
- package.json | 8 --------
- 1 file changed, 8 deletions(-)
-
 diff --git a/package.json b/package.json
-index 9c2d20c..4ad8321 100644
+index 54eafcc..108e968 100644
 --- a/package.json
 +++ b/package.json
-@@ -1,9 +1,6 @@
+@@ -1,5 +1,7 @@
  {
    "name": "Pencil",
++  "description": "An open-source GUI prototyping tool that is available for ALL platforms.",
++  "author": "Evolus",
    "devDependencies": {
--    "electron": "10.1.5",
--    "electron-builder": "20.28.4",
--    "electron-rebuild": "^1.8.5",
-     "rimraf": "^2.5.4"
-   },
-   "build": {
-@@ -55,9 +52,6 @@
-       "perMachine": true,
-       "allowToChangeInstallationDirectory": true
+     "electron": "15.2.0",
+     "electron-builder": "20.28.4",
+@@ -29,10 +31,7 @@
+       ]
      },
--    "electronDownload": {
--      "cache": ".electron-cache"
+     "linux": {
+-      "description": "An open-source GUI prototyping tool that is available for ALL platforms.",
+-      "synopsis": "An open-source GUI prototyping tool that is available for ALL platforms.",
+       "maintainer": "Nguyen Tien Dzung <ngtdungnt@gmail.com>",
+-      "vendor": "Evolus",
+       "target": [
+         "deb",
+         "rpm",
+@@ -42,14 +41,6 @@
+       "category": "Graphics",
+       "packageCategory": "graphics"
+     },
+-    "win": {
+-      "authors": "Evolus",
+-      "owners": "Evolus",
+-      "description": "An open-source GUI prototyping tool that is available for ALL platforms.",
+-      "copyright": "Copyright © 2008-2016 Evolus. All rights reserved.",
+-      "iconUrl": "https://raw.githubusercontent.com/evolus/pencil/master/build/icon.ico",
+-      "target": "nsis"
 -    },
-     "fileAssociations": {
-       "ext": [
-         "ep",
-@@ -68,8 +62,6 @@
-     }
-   },
-   "scripts": {
--    "postinstall": "install-app-deps",
--    "install-app-deps": "node ./node_modules/electron-builder/out/install-app-deps.js",
-     "start": "./node_modules/.bin/electron ./app",
-     "start:dev": "./node_modules/.bin/electron ./app --enable-dev --enable-transparent-visuals",
-     "start:mac": "./node_modules/.bin/electron ./app --enable-dev",
--- 
-2.29.2
-
+     "nsis": {
+       "oneClick": false,
+       "perMachine": true,
